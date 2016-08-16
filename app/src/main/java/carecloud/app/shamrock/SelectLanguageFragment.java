@@ -17,7 +17,6 @@ import android.widget.TextView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +38,7 @@ public class SelectLanguageFragment extends Fragment implements
         super.onCreate(savedInstanceState);
         parseJson(json);
         extractLanguages();
+        mSelectedLanguage = findDefaultLanguage();
     }
 
     @Nullable
@@ -65,6 +65,8 @@ public class SelectLanguageFragment extends Fragment implements
         // Apply the adapter to the spinner
         spinner.setAdapter(adapter);
         spinner.setOnItemSelectedListener(this);
+        // set spinner to the default
+        spinner.setSelection(adapter != null ? adapter.getPosition(mSelectedLanguage) : 0);
 
         Button button = (Button) view.findViewById(R.id.btn_submit);
         button.setOnClickListener(new View.OnClickListener() {
@@ -82,8 +84,7 @@ public class SelectLanguageFragment extends Fragment implements
     @Override
     public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
         mSelectedLanguage = (String) adapterView.getAdapter().getItem(i);
-        LanguageOption selectedLanguageOption = findAfterLanguage(mSelectedLanguage);
-        tvLabel.setText(selectedLanguageOption != null ? selectedLanguageOption.label : null);
+        setSelectedLanguage();
 
         // test
         Log.v(LOG_TAG, "selected language: " + mSelectedLanguage);
@@ -143,6 +144,25 @@ public class SelectLanguageFragment extends Fragment implements
         return null;
     }
 
+    private String findDefaultLanguage() {
+        for (LanguageOption languageOption : mLangOptions) {
+            if (languageOption.isDefault) {
+                return languageOption.value;
+            }
+        }
+        return null;
+    }
+
+    private void setSelectedLanguage() {
+        LanguageOption languageOption = findAfterLanguage(mSelectedLanguage);
+        if(tvLabel != null && languageOption != null) {
+            tvLabel.setText(languageOption.label);
+        }
+    }
+
+    /**
+     * Model for language option
+     */
     public static class LanguageOption {
 
         public int      languageId;
@@ -191,7 +211,7 @@ public class SelectLanguageFragment extends Fragment implements
             "                                    \"iconId\": null,\n" +
             "                                    \"value\": \"English\",\n" +
             "                                    \"child\": [],\n" +
-            "                                    \"isDefault\": true,\n" +
+            "                                    \"isDefault\": false,\n" +
             "                                    \"skip\": []\n" +
             "                                },\n" +
             "                                {\n" +
@@ -200,7 +220,7 @@ public class SelectLanguageFragment extends Fragment implements
             "                                    \"iconId\": null,\n" +
             "                                    \"value\": \"Español\",\n" +
             "                                    \"child\": [],\n" +
-            "                                    \"isDefault\": false,\n" +
+            "                                    \"isDefault\": true,\n" +
             "                                    \"skip\": []\n" +
             "                                }\n" +
             "                            ]\n" +
