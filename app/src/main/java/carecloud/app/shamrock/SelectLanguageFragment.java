@@ -20,6 +20,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -29,17 +30,27 @@ public class SelectLanguageFragment extends Fragment implements
                                                      AdapterView.OnItemSelectedListener {
 
     private static final String LOG_TAG = SelectLanguageFragment.class.getSimpleName();
-    private List<LanguageOption> mLangOptions;
-    private String[]             mLanguages;
-    private String               mSelectedLanguage;
-    private TextView             tvLabel;
+    private String[]          mLanguages;
+    private String            mSelectedLanguage;
+    private TextView          tvLabel;
+    private String            mScreenName;
+    private LangOptionsBundle mLangOptionsBundle;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        parseJson(json);
-        extractLanguages();
-        mSelectedLanguage = findDefaultLanguage();
+
+        // todo move in the activity
+        // parse the json
+        ParseHelper parseHelper = new ParseHelper();
+        LanguageOption[] langOptions = parseHelper.getLangOptions();
+
+        // create the language options holder
+        mLangOptionsBundle = new LangOptionsBundle(langOptions);
+
+        // get all languages available and the default one
+        mLanguages = mLangOptionsBundle.getAvailLanguages();
+        mSelectedLanguage = mLangOptionsBundle.findDefaultLanguage();
     }
 
     @Nullable
@@ -79,6 +90,7 @@ public class SelectLanguageFragment extends Fragment implements
                 Snackbar.make(view, mSelectedLanguage, Snackbar.LENGTH_SHORT).show();
             }
         });
+
         return view;
     }
 
@@ -97,67 +109,53 @@ public class SelectLanguageFragment extends Fragment implements
 
     }
 
-    private LanguageOption[] parseJson(String json) {
-        mLangOptions = new ArrayList<>();
-        try {
-            JSONObject root = new JSONObject(json);
-            JSONArray screensArray = root.getJSONArray("screens");
-            JSONObject screenObject = screensArray.getJSONObject(0);
-            JSONArray jsonArray = screenObject.getJSONArray("json");
-            JSONArray languageArray = jsonArray.getJSONObject(0).getJSONArray("language");
-            JSONObject languageObject = languageArray.getJSONObject(0);
-            JSONArray languageOptions = languageObject.getJSONArray("options");
-            for (int i = 0; i < languageOptions.length(); i++) {
-                JSONObject jsonLanguageOption = languageOptions.getJSONObject(i);
-                LanguageOption languageOption = new LanguageOption();
-                languageOption.languageId = jsonLanguageOption.getInt("languageId");
-                languageOption.label = jsonLanguageOption.getString("label");
-                languageOption.iconId = -1;
-                languageOption.value = jsonLanguageOption.getString("value");
-                languageOption.child = null; // todo parse
-                languageOption.isDefault = jsonLanguageOption.getBoolean("isDefault");
-                languageOption.skip = null; // todo parse
-
-                mLangOptions.add(languageOption);
-
-                // test
-                Log.v(LOG_TAG, languageOption.toString());
-            }
-        } catch (JSONException e) {
-            Log.v(LOG_TAG, e.getMessage(), e);
-        }
-        return null;
-    }
-
-    private void extractLanguages() {
-        mLanguages = new String[mLangOptions.size()];
-        for (int i = 0; i < mLangOptions.size(); i++) {
-            mLanguages[i] = mLangOptions.get(i).value;
-        }
-    }
-
-    private LanguageOption findAfterLanguage(String language) {
-        for (LanguageOption languageOption : mLangOptions) {
-            if (languageOption.value.equals(language)) {
-                return languageOption;
-            }
-        }
-        return null;
-    }
-
-    private String findDefaultLanguage() {
-        for (LanguageOption languageOption : mLangOptions) {
-            if (languageOption.isDefault) {
-                return languageOption.value;
-            }
-        }
-        return null;
-    }
-
     private void setSelectedLanguage() {
-        LanguageOption languageOption = findAfterLanguage(mSelectedLanguage);
-        if(tvLabel != null && languageOption != null) {
+        LanguageOption languageOption = mLangOptionsBundle.findAfterLanguage(mSelectedLanguage);
+        if (tvLabel != null && languageOption != null) {
             tvLabel.setText(languageOption.label);
+        }
+    }
+
+    /**
+     *
+     */
+    public static class LangOptionsBundle {
+
+        private LanguageOption[] mLangOptions;
+        private String[]             mLanguages;
+
+        public LangOptionsBundle(LanguageOption[] languageOptions) {
+            mLangOptions = languageOptions;
+            extractLanguages();
+        }
+
+        private void extractLanguages() {
+            mLanguages = new String[mLangOptions.length];
+            for (int i = 0; i < mLangOptions.length; i++) {
+                mLanguages[i] = mLangOptions[i].value;
+            }
+        }
+
+        private LanguageOption findAfterLanguage(String language) {
+            for (LanguageOption languageOption : mLangOptions) {
+                if (languageOption.value.equals(language)) {
+                    return languageOption;
+                }
+            }
+            return null;
+        }
+
+        private String findDefaultLanguage() {
+            for (LanguageOption languageOption : mLangOptions) {
+                if (languageOption.isDefault) {
+                    return languageOption.value;
+                }
+            }
+            return null;
+        }
+
+        public String[] getAvailLanguages() {
+            return mLanguages;
         }
     }
 
@@ -186,51 +184,97 @@ public class SelectLanguageFragment extends Fragment implements
     }
 
     /**
-     * hard-coded test json
+     *
      */
-    private static final String json = "{\n" +
-            "    \"screens\": [\n" +
-            "        {\n" +
-            "            \"json\": [\n" +
-            "                {\n" +
-            "                    \"screen name\": \"Select Language\",\n" +
-            "                    \"description\": \"screen for language selection\",\n" +
-            "                    \"langId\": 1,\n" +
-            "                    \"language\": [\n" +
-            "                        {\n" +
-            "                            \"fieldId\": 101,\n" +
-            "                            \"required\": false,\n" +
-            "                            \"fieldType\": 2,\n" +
-            "                            \"fieldCategory\": 2,\n" +
-            "                            \"iconId\": null,\n" +
-            "                            \"label\": null,\n" +
-            "                            \"lookup\": null,\n" +
-            "                            \"options\": [\n" +
-            "                                {\n" +
-            "                                    \"languageId\": 201,\n" +
-            "                                    \"label\": \"Please Select Language\",\n" +
-            "                                    \"iconId\": null,\n" +
-            "                                    \"value\": \"English\",\n" +
-            "                                    \"child\": [],\n" +
-            "                                    \"isDefault\": false,\n" +
-            "                                    \"skip\": []\n" +
-            "                                },\n" +
-            "                                {\n" +
-            "                                    \"languageId\": 202,\n" +
-            "                                    \"label\": \"Por favor, seleccione Idioma\",\n" +
-            "                                    \"iconId\": null,\n" +
-            "                                    \"value\": \"Español\",\n" +
-            "                                    \"child\": [],\n" +
-            "                                    \"isDefault\": true,\n" +
-            "                                    \"skip\": []\n" +
-            "                                }\n" +
-            "                            ]\n" +
-            "                        }\n" +
-            "                    ]\n" +
-            "                }\n" +
-            "            ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
+    public static class ParseHelper {
 
+        private LanguageOption[] mLangOptions;
+
+        public ParseHelper() {
+            parseJson();
+        }
+
+        private void parseJson() {
+            try {
+                JSONObject root = new JSONObject(json);
+                JSONArray screensArray = root.getJSONArray("screens");
+                JSONObject screenObject = screensArray.getJSONObject(0);
+                JSONArray jsonArray = screenObject.getJSONArray("json");
+                JSONArray languageArray = jsonArray.getJSONObject(0).getJSONArray("language");
+                JSONObject languageObject = languageArray.getJSONObject(0);
+                JSONArray languageOptions = languageObject.getJSONArray("options");
+                mLangOptions = new LanguageOption[languageOptions.length()];
+                for (int i = 0; i < languageOptions.length(); i++) {
+                    JSONObject jsonLanguageOption = languageOptions.getJSONObject(i);
+                    LanguageOption languageOption = new LanguageOption();
+                    languageOption.languageId = jsonLanguageOption.getInt("languageId");
+                    languageOption.label = jsonLanguageOption.getString("label");
+                    languageOption.iconId = -1;
+                    languageOption.value = jsonLanguageOption.getString("value");
+                    languageOption.child = null; // todo parse
+                    languageOption.isDefault = jsonLanguageOption.getBoolean("isDefault");
+                    languageOption.skip = null; // todo parse
+
+                    mLangOptions[i] = languageOption;
+
+                    // test
+                    Log.v(LOG_TAG, languageOption.toString());
+                }
+            } catch (JSONException e) {
+                Log.v(LOG_TAG, e.getMessage(), e);
+            }
+        }
+
+        public LanguageOption[] getLangOptions() {
+            return mLangOptions;
+        }
+
+        /**
+         * hard-coded test json
+         */
+        private static final String json = "{\n" +
+                "    \"screens\": [\n" +
+                "        {\n" +
+                "            \"json\": [\n" +
+                "                {\n" +
+                "                    \"screen name\": \"Select Language\",\n" +
+                "                    \"description\": \"screen for language selection\",\n" +
+                "                    \"langId\": 1,\n" +
+                "                    \"language\": [\n" +
+                "                        {\n" +
+                "                            \"fieldId\": 101,\n" +
+                "                            \"required\": false,\n" +
+                "                            \"fieldType\": 2,\n" +
+                "                            \"fieldCategory\": 2,\n" +
+                "                            \"iconId\": null,\n" +
+                "                            \"label\": null,\n" +
+                "                            \"lookup\": null,\n" +
+                "                            \"options\": [\n" +
+                "                                {\n" +
+                "                                    \"languageId\": 201,\n" +
+                "                                    \"label\": \"Please Select Language\",\n" +
+                "                                    \"iconId\": null,\n" +
+                "                                    \"value\": \"English\",\n" +
+                "                                    \"child\": [],\n" +
+                "                                    \"isDefault\": false,\n" +
+                "                                    \"skip\": []\n" +
+                "                                },\n" +
+                "                                {\n" +
+                "                                    \"languageId\": 202,\n" +
+                "                                    \"label\": \"Por favor, seleccione Idioma\",\n" +
+                "                                    \"iconId\": null,\n" +
+                "                                    \"value\": \"Español\",\n" +
+                "                                    \"child\": [],\n" +
+                "                                    \"isDefault\": true,\n" +
+                "                                    \"skip\": []\n" +
+                "                                }\n" +
+                "                            ]\n" +
+                "                        }\n" +
+                "                    ]\n" +
+                "                }\n" +
+                "            ]\n" +
+                "        }\n" +
+                "    ]\n" +
+                "}";
+    }
 }
