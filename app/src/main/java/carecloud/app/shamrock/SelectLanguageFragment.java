@@ -1,6 +1,8 @@
 package carecloud.app.shamrock;
 
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
@@ -31,14 +33,14 @@ import carecloud.app.shamrock.model.LanguageOption;
 public class SelectLanguageFragment extends Fragment implements
                                                      AdapterView.OnItemSelectedListener {
 
-    private static final String LOG_TAG     = SelectLanguageFragment.class.getSimpleName();
-    public static final String LANG_OPTIONS = "lang_options";
-    public static final String SCREEN_TITLE = "title";
+    private static final String LOG_TAG               = SelectLanguageFragment.class.getSimpleName();
+    public static final  String LANG_OPTIONS          = "lang_options";
+    public static final  String SCREEN_TITLE          = "title";
 
-    private String[]          mLanguages;
-    private String            mSelectedLanguage;
-    private TextView          tvLabel;
-    private String            mScreenName = "";
+    private String[] mLanguages;
+    private String   mSelectedLanguage;
+    private TextView tvLabel;
+    private String mScreenName = "";
     private LangOptionsBundle mLangOptionsBundle;
 
     @Override
@@ -47,7 +49,7 @@ public class SelectLanguageFragment extends Fragment implements
 
         Bundle bundle = getArguments();
         LanguageOption[] langOptions = null;
-        if(bundle != null) {
+        if (bundle != null) {
             langOptions = (LanguageOption[]) bundle.getParcelableArray(LANG_OPTIONS);
             mScreenName = bundle.getString(SCREEN_TITLE);
         }
@@ -86,13 +88,20 @@ public class SelectLanguageFragment extends Fragment implements
         spinner.setAdapter(adapter);
         spinner.setOnItemSelectedListener(this);
         // set spinner to the default
-        spinner.setSelection(adapter != null ? adapter.getPosition(mSelectedLanguage) : 0);
+        int position = 0;
+        if(adapter != null) {
+            if(mSelectedLanguage != null) {
+                position = adapter.getPosition(mSelectedLanguage);
+            }
+            spinner.setSelection(position);
+        }
 
         Button button = (Button) view.findViewById(R.id.btn_submit);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // todo change the Locale?
+                // save selection
+                Utility.saveSelectedLanguage(getActivity(), mSelectedLanguage);
 
                 // test
                 Snackbar.make(view, mSelectedLanguage, Snackbar.LENGTH_SHORT).show();
@@ -100,6 +109,13 @@ public class SelectLanguageFragment extends Fragment implements
         });
 
         return view;
+    }
+
+    private void setSelectedLanguage() {
+        LanguageOption languageOption = mLangOptionsBundle.findAfterLanguage(mSelectedLanguage);
+        if (tvLabel != null && languageOption != null) {
+            tvLabel.setText(languageOption.label);
+        }
     }
 
     @Override
@@ -117,20 +133,13 @@ public class SelectLanguageFragment extends Fragment implements
 
     }
 
-    private void setSelectedLanguage() {
-        LanguageOption languageOption = mLangOptionsBundle.findAfterLanguage(mSelectedLanguage);
-        if (tvLabel != null && languageOption != null) {
-            tvLabel.setText(languageOption.label);
-        }
-    }
-
     /**
      * Utility class to play with the available languages
      */
     public static class LangOptionsBundle {
 
         private LanguageOption[] mLangOptions;
-        private String[]             mLanguages;
+        private String[]         mLanguages;
 
         public LangOptionsBundle(LanguageOption[] languageOptions) {
             mLangOptions = languageOptions;

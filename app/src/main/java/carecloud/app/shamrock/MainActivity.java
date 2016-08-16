@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
                 "                                    \"iconId\": null,\n" +
                 "                                    \"value\": \"English\",\n" +
                 "                                    \"child\": [],\n" +
-                "                                    \"isDefault\": false,\n" +
+                "                                    \"isDefault\": true,\n" +
                 "                                    \"skip\": []\n" +
                 "                                },\n" +
                 "                                {\n" +
@@ -132,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
                 "                                    \"iconId\": null,\n" +
                 "                                    \"value\": \"Español\",\n" +
                 "                                    \"child\": [],\n" +
-                "                                    \"isDefault\": true,\n" +
+                "                                    \"isDefault\": false,\n" +
                 "                                    \"skip\": []\n" +
                 "                                }\n" +
                 "                            ]\n" +
