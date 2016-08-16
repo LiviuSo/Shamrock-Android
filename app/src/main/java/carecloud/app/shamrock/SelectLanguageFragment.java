@@ -3,6 +3,7 @@ package carecloud.app.shamrock;
 
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -75,7 +76,7 @@ public class SelectLanguageFragment extends Fragment implements
                 // todo change the Locale?
 
                 // test
-                Log.v(LOG_TAG, "language set to :" + mSelectedLanguage);
+                Snackbar.make(view, mSelectedLanguage, Snackbar.LENGTH_SHORT).show();
             }
         });
         return view;
@@ -118,10 +119,10 @@ public class SelectLanguageFragment extends Fragment implements
                 languageOption.skip = null; // todo parse
 
                 mLangOptions.add(languageOption);
+
                 // test
                 Log.v(LOG_TAG, languageOption.toString());
             }
-
         } catch (JSONException e) {
             Log.v(LOG_TAG, e.getMessage(), e);
         }
