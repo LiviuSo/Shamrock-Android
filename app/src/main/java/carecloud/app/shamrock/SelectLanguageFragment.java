@@ -3,6 +3,7 @@ package carecloud.app.shamrock;
 
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -13,13 +14,13 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
-
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
+import carecloud.app.shamrock.model.MainResponse;
+import carecloud.app.shamrock.model.Option;
+import carecloud.app.shamrock.parser.LanguageParser;
 
 /**
  * Fragment for choosing language screen
@@ -27,18 +28,29 @@ import java.util.List;
 public class SelectLanguageFragment extends Fragment implements
                                                      AdapterView.OnItemSelectedListener {
 
-    private static final String LOG_TAG = SelectLanguageFragment.class.getSimpleName();
-    private List<LanguageOption> mLangOptions;
-    private String[]             mLanguages;
-    private String               mSelectedLanguage;
-    private TextView             tvLabel;
+    private static final String LOG_TAG               = SelectLanguageFragment.class.getSimpleName();
+    public static final  String LANG_OPTIONS          = "lang_options";
+    public static final  String SCREEN_TITLE          = "title";
+
+    private String[] mLanguages;
+    private String   mSelectedLanguage;
+    private TextView tvLabel;
+    private String mScreenName = "";
+    private LangOptionsBundle mLangOptionsBundle;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        parseJson(json);
-        extractLanguages();
-        mSelectedLanguage = findDefaultLanguage();
+
+        MainResponse objMainResponse =   readFileAndGetArray();
+        List<Option> langOptions = objMainResponse.getScreens().get(0).getJson().get(0).getLanguage().get(0).getOptions();
+
+        // create the language options holder
+        mLangOptionsBundle = new LangOptionsBundle(langOptions.toArray(new Option[langOptions.size()]));
+
+        // get all languages available and the default one
+        mLanguages = mLangOptionsBundle.getAvailLanguages();
+        mSelectedLanguage = mLangOptionsBundle.findDefaultLanguage();
     }
 
     @Nullable
@@ -49,6 +61,7 @@ public class SelectLanguageFragment extends Fragment implements
         View view = inflater.inflate(R.layout.fragment_choose_language, container, false);
 
         tvLabel = (TextView) view.findViewById(R.id.tv_message);
+        getActivity().setTitle(mScreenName);
 
         Spinner spinner = (Spinner) view.findViewById(R.id.languages_spinner);
         // Create an ArrayAdapter using the string array and a default spinner layout
@@ -66,19 +79,60 @@ public class SelectLanguageFragment extends Fragment implements
         spinner.setAdapter(adapter);
         spinner.setOnItemSelectedListener(this);
         // set spinner to the default
-        spinner.setSelection(adapter != null ? adapter.getPosition(mSelectedLanguage) : 0);
+        int position = 0;
+        if(adapter != null) {
+            if(mSelectedLanguage != null) {
+                position = adapter.getPosition(mSelectedLanguage);
+            }
+            spinner.setSelection(position);
+        }
 
         Button button = (Button) view.findViewById(R.id.btn_submit);
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // todo change the Locale?
+                // save selection
+                Utility.saveSelectedLanguage(getActivity(), mSelectedLanguage);
 
                 // test
-                Log.v(LOG_TAG, "language set to :" + mSelectedLanguage);
+                Snackbar.make(view, mSelectedLanguage, Snackbar.LENGTH_SHORT).show();
+
             }
         });
+
         return view;
+    }
+
+    private MainResponse readFileAndGetArray() {
+        try {
+            String json = null;
+
+                InputStream is = getActivity().getAssets().open("deta.json");
+                int size = is.available();
+                byte[] buffer = new byte[size];
+                is.read(buffer);
+                is.close();
+                json = new String(buffer, "UTF-8");
+            Log.e(LOG_TAG,json.toString());
+
+            LanguageParser lParser= new LanguageParser();
+          return lParser.getParsedObjectFromJSON(json);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+
+
+    private void setSelectedLanguage() {
+        Option languageOption = mLangOptionsBundle.findAfterLanguage(mSelectedLanguage);
+        if (tvLabel != null && languageOption != null) {
+            tvLabel.setText(languageOption.getLabel());
+        }
     }
 
     @Override
@@ -96,140 +150,46 @@ public class SelectLanguageFragment extends Fragment implements
 
     }
 
-    private LanguageOption[] parseJson(String json) {
-        mLangOptions = new ArrayList<>();
-        try {
-            JSONObject root = new JSONObject(json);
-            JSONArray screensArray = root.getJSONArray("screens");
-            JSONObject screenObject = screensArray.getJSONObject(0);
-            JSONArray jsonArray = screenObject.getJSONArray("json");
-            JSONArray languageArray = jsonArray.getJSONObject(0).getJSONArray("language");
-            JSONObject languageObject = languageArray.getJSONObject(0);
-            JSONArray languageOptions = languageObject.getJSONArray("options");
-            for (int i = 0; i < languageOptions.length(); i++) {
-                JSONObject jsonLanguageOption = languageOptions.getJSONObject(i);
-                LanguageOption languageOption = new LanguageOption();
-                languageOption.languageId = jsonLanguageOption.getInt("languageId");
-                languageOption.label = jsonLanguageOption.getString("label");
-                languageOption.iconId = -1;
-                languageOption.value = jsonLanguageOption.getString("value");
-                languageOption.child = null; // todo parse
-                languageOption.isDefault = jsonLanguageOption.getBoolean("isDefault");
-                languageOption.skip = null; // todo parse
-
-                mLangOptions.add(languageOption);
-                // test
-                Log.v(LOG_TAG, languageOption.toString());
-            }
-
-        } catch (JSONException e) {
-            Log.v(LOG_TAG, e.getMessage(), e);
-        }
-        return null;
-    }
-
-    private void extractLanguages() {
-        mLanguages = new String[mLangOptions.size()];
-        for (int i = 0; i < mLangOptions.size(); i++) {
-            mLanguages[i] = mLangOptions.get(i).value;
-        }
-    }
-
-    private LanguageOption findAfterLanguage(String language) {
-        for (LanguageOption languageOption : mLangOptions) {
-            if (languageOption.value.equals(language)) {
-                return languageOption;
-            }
-        }
-        return null;
-    }
-
-    private String findDefaultLanguage() {
-        for (LanguageOption languageOption : mLangOptions) {
-            if (languageOption.isDefault) {
-                return languageOption.value;
-            }
-        }
-        return null;
-    }
-
-    private void setSelectedLanguage() {
-        LanguageOption languageOption = findAfterLanguage(mSelectedLanguage);
-        if(tvLabel != null && languageOption != null) {
-            tvLabel.setText(languageOption.label);
-        }
-    }
-
     /**
-     * Model for language option
+     * Utility class to play with the available languages
      */
-    public static class LanguageOption {
+    public static class LangOptionsBundle {
 
-        public int      languageId;
-        public String   label;
-        public int      iconId;
-        public String   value;
-        public String[] child;
-        public boolean  isDefault;
-        public String[] skip;
+        private Option[] mLangOptions;
+        private String[]         mLanguages;
 
-        @Override
-        public String toString() {
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append(languageId).append(" ")
-                    .append(label).append(" ")
-                    .append(value).append(" ")
-                    .append(isDefault).append(" \n");
-            return stringBuilder.toString();
+        public LangOptionsBundle(Option[] languageOptions) {
+            mLangOptions = languageOptions;
+            extractLanguages();
+        }
+
+        private void extractLanguages() {
+            mLanguages = new String[mLangOptions.length];
+            for (int i = 0; i < mLangOptions.length; i++) {
+                mLanguages[i] = mLangOptions[i].getValue();
+            }
+        }
+
+        private Option findAfterLanguage(String language) {
+            for (Option languageOption : mLangOptions) {
+                if (languageOption.getValue().equals(language)) {
+                    return languageOption;
+                }
+            }
+            return null;
+        }
+
+        private String findDefaultLanguage() {
+            for (Option languageOption : mLangOptions) {
+                if (languageOption.getIsDefault()) {
+                    return languageOption.getValue();
+                }
+            }
+            return null;
+        }
+
+        public String[] getAvailLanguages() {
+            return mLanguages;
         }
     }
-
-    /**
-     * hard-coded test json
-     */
-    private static final String json = "{\n" +
-            "    \"screens\": [\n" +
-            "        {\n" +
-            "            \"json\": [\n" +
-            "                {\n" +
-            "                    \"screen name\": \"Select Language\",\n" +
-            "                    \"description\": \"screen for language selection\",\n" +
-            "                    \"langId\": 1,\n" +
-            "                    \"language\": [\n" +
-            "                        {\n" +
-            "                            \"fieldId\": 101,\n" +
-            "                            \"required\": false,\n" +
-            "                            \"fieldType\": 2,\n" +
-            "                            \"fieldCategory\": 2,\n" +
-            "                            \"iconId\": null,\n" +
-            "                            \"label\": null,\n" +
-            "                            \"lookup\": null,\n" +
-            "                            \"options\": [\n" +
-            "                                {\n" +
-            "                                    \"languageId\": 201,\n" +
-            "                                    \"label\": \"Please Select Language\",\n" +
-            "                                    \"iconId\": null,\n" +
-            "                                    \"value\": \"English\",\n" +
-            "                                    \"child\": [],\n" +
-            "                                    \"isDefault\": false,\n" +
-            "                                    \"skip\": []\n" +
-            "                                },\n" +
-            "                                {\n" +
-            "                                    \"languageId\": 202,\n" +
-            "                                    \"label\": \"Por favor, seleccione Idioma\",\n" +
-            "                                    \"iconId\": null,\n" +
-            "                                    \"value\": \"Español\",\n" +
-            "                                    \"child\": [],\n" +
-            "                                    \"isDefault\": true,\n" +
-            "                                    \"skip\": []\n" +
-            "                                }\n" +
-            "                            ]\n" +
-            "                        }\n" +
-            "                    ]\n" +
-            "                }\n" +
-            "            ]\n" +
-            "        }\n" +
-            "    ]\n" +
-            "}";
-
 }

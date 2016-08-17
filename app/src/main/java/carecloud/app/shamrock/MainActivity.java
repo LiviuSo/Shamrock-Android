@@ -2,8 +2,6 @@ package carecloud.app.shamrock;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -14,10 +12,19 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         if(savedInstanceState == null) {
+
+            // create the fragment and pass the lang options and the title
+            SelectLanguageFragment fragment = new SelectLanguageFragment();
+
+
+            // add select language fragment
             getSupportFragmentManager()
                     .beginTransaction()
-                    .add(R.id.fragment_holder, new SelectLanguageFragment(), null)
+                    .add(R.id.fragment_holder, fragment, null)
                     .commit();
         }
     }
+
+
+
 }
